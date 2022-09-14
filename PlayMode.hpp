@@ -27,6 +27,11 @@ struct PlayMode : Mode {
 	//local copy of the game scene (so code can change it during gameplay):
 	Scene scene;
 
+	//scene objects
+	Scene::Transform *cat = nullptr;
+	Scene::Transform *mouse = nullptr;
+	Scene::Transform *plane = nullptr;
+
 	//hexapod leg to wobble:
 	Scene::Transform *hip = nullptr;
 	Scene::Transform *upper_leg = nullptr;
