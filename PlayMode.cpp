@@ -58,7 +58,7 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 	timeToRespawn = 1.0f;
 
 	// all mice are hidden at start
-	for (int i = 0; i < mouses.size(); i++) {
+	for (uint8_t i = 0; i < mouses.size(); i++) {
 		mouses[i]->position.z = -1.0f;
 		hiddenMice.push_back(i);
 	}
