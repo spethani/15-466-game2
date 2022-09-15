@@ -29,19 +29,16 @@ struct PlayMode : Mode {
 
 	//scene objects
 	Scene::Transform *cat = nullptr;
-	Scene::Transform *mouse = nullptr;
 	Scene::Transform *plane = nullptr;
-
 	std::vector<Scene::Transform*> mouses;
 
-	//hexapod leg to wobble:
-	Scene::Transform *hip = nullptr;
-	Scene::Transform *upper_leg = nullptr;
-	Scene::Transform *lower_leg = nullptr;
-	glm::quat hip_base_rotation;
-	glm::quat upper_leg_base_rotation;
-	glm::quat lower_leg_base_rotation;
-	float wobble = 0.0f;
+	//tracking mouse behavior
+	std::deque<int> hiddenMice;
+	double timeToRespawn;
+	double timeSinceRespawn;
+
+	int score = 0;
+	bool gameOver = false;
 	
 	//camera:
 	Scene::Camera *camera = nullptr;

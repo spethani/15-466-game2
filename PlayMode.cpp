@@ -44,13 +44,25 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 			std::cout << transform.name << std::endl;
 			mouses.push_back(&transform);
 		}
+		if (transform.name == "Plane") plane = &transform;
 	}
 	if (cat == nullptr) throw std::runtime_error("Cat not found.");
 	if (mouses.size() != 8) throw std::runtime_error("Mouse not found.");
+	if (plane == nullptr) throw std::runtime_error("Plane not found.");
 
 	//get pointer to camera for convenience:
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
+
+	// set times for mouse respawn
+	timeSinceRespawn = 0.0f;
+	timeToRespawn = 1.0f;
+
+	// all mice are hidden at start
+	for (int i = 0; i < mouses.size(); i++) {
+		mouses[i]->position.z = -1.0f;
+		hiddenMice.push_back(i);
+	}
 }
 
 PlayMode::~PlayMode() {
@@ -99,6 +111,11 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 void PlayMode::update(float elapsed) {
+	if (gameOver) {
+		plane->position.z = 2.0f;
+		return; // perform no updates after game over
+	}
+
 	//move cat and camera:
 	{
 		//combine inputs into a move:
@@ -117,8 +134,6 @@ void PlayMode::update(float elapsed) {
 		glm::vec3 frame_right = frame[0];
 		//glm::vec3 up = frame[1];
 		glm::vec3 frame_forward = -frame[2];
-		std::cout << move.x << "," << move.y << std::endl;
-
 		cat->position += move.x * frame_right + move.y * frame_forward;
 
 		// move camera
@@ -133,15 +148,45 @@ void PlayMode::update(float elapsed) {
 		double cat_min_y = cat->position.y - radius;
 		double cat_max_x = cat->position.x + radius;
 		double cat_max_y = cat->position.y + radius;
-		for (auto &transform : mouses) {
+		for (uint8_t i = 0; i < mouses.size(); i++) {
+			auto &transform = mouses[i];
 			double mouse_min_x = transform->position.x - radius;
 			double mouse_min_y = transform->position.y - radius;
 			double mouse_max_x = transform->position.x + radius;
 			double mouse_max_y = transform->position.y + radius;
 			if ((mouse_max_x >= cat_min_x && cat_max_x >= mouse_min_x) 
-				&& (mouse_max_y >= cat_min_y && cat_max_y >= mouse_min_y)) {
+				&& (mouse_max_y >= cat_min_y && cat_max_y >= mouse_min_y)
+				&& transform->position.z >= 0) {
 				transform->position.z = -1.0f;
+				score++;
+				hiddenMice.push_back(i);
 			}
+		}
+	}
+
+	// check for respawn of mice
+	{
+		timeSinceRespawn += elapsed;
+		if (hiddenMice.size() == 0) {
+			gameOver = true;
+		}
+		else if (timeSinceRespawn >= timeToRespawn) {
+			timeSinceRespawn -= timeToRespawn;
+
+			// random code taken from https://stackoverflow.com/questions/7560114/random-number-c-in-some-range
+			static std::random_device rd; // obtain a random number from hardware
+			static std::mt19937 gen(rd()); // seed the generator
+			static std::uniform_int_distribution<> distr_location(-8, 8); // define the range
+
+			// respawn a mouse
+			int index = hiddenMice[0];
+			hiddenMice.pop_front();
+			mouses[index]->position.z = 1.0f;
+			mouses[index]->position.x = (float) distr_location(gen);
+			mouses[index]->position.y = (float) distr_location(gen);
+
+			static std::uniform_int_distribution<> distr_time(1, 5);
+			timeToRespawn = distr_time(gen);
 		}
 	}
 
@@ -185,15 +230,29 @@ void PlayMode::draw(glm::uvec2 const &drawable_size) {
 			0.0f, 0.0f, 0.0f, 1.0f
 		));
 
-		constexpr float H = 0.09f;
-		lines.draw_text("Mouse motion rotates camera; WASD moves; escape ungrabs mouse",
-			glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
-			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
-		float ofs = 2.0f / drawable_size.y;
-		lines.draw_text("Mouse motion rotates camera; WASD moves; escape ungrabs mouse",
-			glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
-			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
-			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+		if (!gameOver) {
+			constexpr float H = 0.09f;
+			lines.draw_text("WASD moves cat; score: " + std::to_string(score),
+				glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0x00, 0x00, 0x00, 0x00));
+			float ofs = 2.0f / drawable_size.y;
+			lines.draw_text("WASD moves cat; score: " + std::to_string(score),
+				glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+		}
+		else {
+			constexpr float H = 0.09f;
+			lines.draw_text("GAME OVER, ALL MICE SPAWNED; score: " + std::to_string(score),
+				glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0x00, 0x00, 0x00, 0x00));
+			float ofs = 2.0f / drawable_size.y;
+			lines.draw_text("GAME OVER, ALL MICE SPAWNED; score: " + std::to_string(score),
+				glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
+				glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+				glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+		}
 	}
 }
