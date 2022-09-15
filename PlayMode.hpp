@@ -32,6 +32,8 @@ struct PlayMode : Mode {
 	Scene::Transform *mouse = nullptr;
 	Scene::Transform *plane = nullptr;
 
+	std::vector<Scene::Transform*> mouses;
+
 	//hexapod leg to wobble:
 	Scene::Transform *hip = nullptr;
 	Scene::Transform *upper_leg = nullptr;

@@ -11,6 +11,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <random>
+#include <vector>
 
 GLuint hexapod_meshes_for_lit_color_texture_program = 0;
 Load< MeshBuffer > hexapod_meshes(LoadTagDefault, []() -> MeshBuffer const * {
@@ -32,19 +33,20 @@ Load< Scene > hexapod_scene(LoadTagDefault, []() -> Scene const * {
 		drawable.pipeline.type = mesh.type;
 		drawable.pipeline.start = mesh.start;
 		drawable.pipeline.count = mesh.count;
-
 	});
 });
 
 PlayMode::PlayMode() : scene(*hexapod_scene) {
 	// get pointers to scene objects for convenience:
 	for (auto &transform : scene.transforms) {
-		std::cout << transform.name << std::endl;
 		if (transform.name == "Cat") cat = &transform;
-		if (transform.name == "Mouse") mouse = &transform;
+		if (transform.name.substr(0, 5) == "Mouse") {
+			std::cout << transform.name << std::endl;
+			mouses.push_back(&transform);
+		}
 	}
 	if (cat == nullptr) throw std::runtime_error("Cat not found.");
-	if (mouse == nullptr) throw std::runtime_error("Mouse not found.");
+	if (mouses.size() != 8) throw std::runtime_error("Mouse not found.");
 
 	//get pointer to camera for convenience:
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
@@ -99,14 +101,13 @@ bool PlayMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 void PlayMode::update(float elapsed) {
 	//move cat and camera:
 	{
-
 		//combine inputs into a move:
 		constexpr float PlayerSpeed = 10.0f;
 		glm::vec2 move = glm::vec2(0.0f);
-		if (left.pressed && !right.pressed) move.x = 1.0f;
-		if (!left.pressed && right.pressed) move.x = -1.0f;
-		if (down.pressed && !up.pressed) move.y = 1.0f;
-		if (!down.pressed && up.pressed) move.y = -1.0f;
+		if (left.pressed && !right.pressed && cat->position.y >= -10) move.x = 1.0f;
+		if (!left.pressed && right.pressed && cat->position.y <= 10) move.x = -1.0f;
+		if (down.pressed && !up.pressed && cat->position.x <= 10) move.y = 1.0f;
+		if (!down.pressed && up.pressed && cat->position.x >= -10) move.y = -1.0f;
 
 		//make it so that moving diagonally doesn't go faster:
 		if (move != glm::vec2(0.0f)) move = glm::normalize(move) * PlayerSpeed * elapsed;
@@ -116,12 +117,32 @@ void PlayMode::update(float elapsed) {
 		glm::vec3 frame_right = frame[0];
 		//glm::vec3 up = frame[1];
 		glm::vec3 frame_forward = -frame[2];
+		std::cout << move.x << "," << move.y << std::endl;
 
 		cat->position += move.x * frame_right + move.y * frame_forward;
 
 		// move camera
 		camera->transform->position.x = cat->position.x;
 		camera->transform->position.y = cat->position.y;
+	}
+
+	// check collisions
+	{
+		double radius = 0.5f;
+		double cat_min_x = cat->position.x - radius;
+		double cat_min_y = cat->position.y - radius;
+		double cat_max_x = cat->position.x + radius;
+		double cat_max_y = cat->position.y + radius;
+		for (auto &transform : mouses) {
+			double mouse_min_x = transform->position.x - radius;
+			double mouse_min_y = transform->position.y - radius;
+			double mouse_max_x = transform->position.x + radius;
+			double mouse_max_y = transform->position.y + radius;
+			if ((mouse_max_x >= cat_min_x && cat_max_x >= mouse_min_x) 
+				&& (mouse_max_y >= cat_min_y && cat_max_y >= mouse_min_y)) {
+				transform->position.z = -1.0f;
+			}
+		}
 	}
 
 	//reset button press counters:
