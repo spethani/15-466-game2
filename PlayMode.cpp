@@ -41,7 +41,6 @@ PlayMode::PlayMode() : scene(*hexapod_scene) {
 	for (auto &transform : scene.transforms) {
 		if (transform.name == "Cat") cat = &transform;
 		if (transform.name.substr(0, 5) == "Mouse") {
-			std::cout << transform.name << std::endl;
 			mouses.push_back(&transform);
 		}
 		if (transform.name == "Plane") plane = &transform;

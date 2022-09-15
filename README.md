@@ -1,8 +1,8 @@
-# (TODO: your game's title)
+# Mouse Catch
 
-Author: (TODO: your name)
+Author: Sarah Pethani
 
-Design: (TODO: In two sentences or fewer, describe what is new and interesting about your game.)
+Design: A whack-a-mole-esque game in which you are a cat trying to defeat all the mice that randomly spawn! Game ends when mice take over.
 
 Screen Shot:
 
@@ -10,6 +10,6 @@ Screen Shot:
 
 How To Play:
 
-(TODO: describe the controls and (if needed) goals/strategy.)
+Use WASD to control your cat player. To defeat mice, bump into them with your cat. The mice will randomly spawn around the map at random times. If all 8 mice have respawned on the map, the game ends. Your score increases with each defeated mouse!
 
 This game was built with [NEST](NEST.md).
